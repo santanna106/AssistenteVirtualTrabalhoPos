@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-API_KEY = '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'
+API_KEY = ''
 client = OpenAI(api_key=API_KEY)
 st.session_state.mensagens = []
 
@@ -122,7 +122,7 @@ if prompt:
         if msg['role'] == 'user':
         #print('Mensagem Do Menino> ',msg)
             moderation = client.moderations.create(input=msg['content'])
-            
+
             output = moderation.results[0]
 
             df = pd.DataFrame(dict(output.category_scores).items(), columns=['Category', 'Value'])
