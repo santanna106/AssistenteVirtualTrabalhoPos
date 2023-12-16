@@ -2,6 +2,7 @@ from openai import OpenAI
 import streamlit as st
 import pandas as pd
 import numpy as np
+from time import gmtime, strftime
 
 API_KEY = ''
 client = OpenAI(api_key=API_KEY)
@@ -83,14 +84,20 @@ if 'total_tokens' not in st.session_state:
     st.session_state['total_tokens'] = []
 if 'total_cost' not in st.session_state:
     st.session_state['total_cost'] = 0.0
+if 'data_hora_inicio_conversa' not in st.session_state:
+    st.session_state['data_hora_inicio_conversa'] = ''
 
 
 # Sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
 st.sidebar.title("Sidebar")
-model_name = st.sidebar.radio("Choose a model:", ("GPT-3.5", "GPT-4"))
+model_name = st.sidebar.radio("Escolha o modelo:", ("GPT-3.5", "GPT-4"))
 counter_placeholder = st.sidebar.empty()
-counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-clear_button = st.sidebar.button("Clear Conversation", key="clear")
+counter_placeholder.write(f"Custo Total: ${st.session_state['total_cost']:.5f}")
+
+
+# Adicione um botão de encerramento
+if st.sidebar.button("Encerrar Conversa", key="clear", type="primary"):
+    st.stop()
 
 # Map model names to OpenAI model IDs
 if model_name == "GPT-3.5":
@@ -103,15 +110,26 @@ if "mensagens" not in st.session_state:
     {"role": "system", "content": "Você será um assistente virtual para um usuário do sistema SGS. Sua função será tentar resolver os problemas de acesso do usuário ao SGS. Pedido para ele verificar se o usuário dele está ativo. Se ele tem permissão de acesso ao sistema e caso as verificações não sejam suficientes solicitar que o usuário entre em contato com o setor AB responsável."}
 
 
+
+
+
 # Aparecer o Historico do Chat na tela
 for mensagens in st.session_state.mensagens[1:]:
     with st.chat_message(mensagens["role"]):
         st.markdown(mensagens["content"])
 
+
 # React to user input
 prompt = st.chat_input("Está tendo algum problema com o SGS?")
 
 if prompt:
+
+    if len(st.session_state.mensagens) == 0:
+        data_hora_inicio_conversa = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
+        st.session_state['data_hora_inicio_conversa'] = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
+
+        st.write("Conversa Iniciada em: " + st.session_state['data_hora_inicio_conversa'])
+    
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -149,6 +167,21 @@ if prompt:
             max_tokens=max_tokens_resposta
         )
         resposta = chamada.choices[0].message.content
+
+        total_tokens = chamada.usage.total_tokens
+        prompt_tokens = chamada.usage.prompt_tokens
+        completion_tokens = chamada.usage.completion_tokens
+
+        st.session_state['total_tokens'].append(total_tokens)
+        if model_name == "GPT-3.5":
+            cost = total_tokens * 0.002 / 1000
+        else:
+            cost = (prompt_tokens * 0.03 + completion_tokens * 0.06) / 1000
+
+        st.session_state['cost'].append(cost)
+        st.session_state['total_cost'] += cost
+
+        st.write(st.session_state['total_cost'])
 
 
         # Display assistant response in chat message container
