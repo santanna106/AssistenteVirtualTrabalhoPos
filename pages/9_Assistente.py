@@ -2,13 +2,30 @@ from openai import OpenAI
 import streamlit as st
 import pandas as pd
 import numpy as np
+import math
 from time import gmtime, strftime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
-API_KEY = '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'
+API_KEY = ''
 client = OpenAI(api_key=API_KEY)
+
+def ajusta_linhas(linha:str,tam:int) -> str:
+    nova_linha = linha
+    tamanho = len(linha)
+    num_quebras = math.ceil(tamanho / tam)
+    
+    num_quebras = num_quebras 
+    posicao_ant = 0
+    linha_tratada = ''
+    for seq in range(num_quebras):
+        posicao_quebra = (seq + 1)*tam
+        #print(nova_linha[posicao_ant:posicao_quebra]) 
+        linha_tratada = linha_tratada + nova_linha[posicao_ant:posicao_quebra] + "\n"
+        posicao_ant = posicao_quebra
+        
+    return linha_tratada
 
 # Função para desenhar texto com quebra de linha
 def draw_text_with_line_breaks(c, x, y, text, max_width):
@@ -16,10 +33,7 @@ def draw_text_with_line_breaks(c, x, y, text, max_width):
     text_object.setFont("Helvetica", 12)
     text_object.setTextOrigin(x, y)
     
-    nova_string = text
-    if len(text) >= max_width:
-        nova_string = text[:max_width] + "\n" + text[max_width:]
-
+    nova_string = ajusta_linhas(text,80)
     lines = nova_string.split("\n")  # Dividir o texto em linhas
     for line in lines:
         text_object.textLine(line)  # Adicionar cada linha ao objeto de texto
@@ -249,7 +263,7 @@ if st.session_state["desabilita_widget"]:
         largura_maxima = A4[0] - 2 * x  # Use a largura da página com margens
 
         for msg in st.session_state.mensagens:
-            linha = f"{index}: {msg['content']}"
+            linha = f"{index}. {msg['role']}: {msg['content']}"
             draw_text_with_line_breaks(c, x, y, linha, largura_maxima)
 
             #c.drawString(x, y, linha)
