@@ -3,10 +3,67 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from time import gmtime, strftime
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
 
-API_KEY = ''
+API_KEY = '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'
 client = OpenAI(api_key=API_KEY)
-st.session_state.mensagens = []
+
+# Função para desenhar texto com quebra de linha
+def draw_text_with_line_breaks(c, x, y, text, max_width):
+    text_object = c.beginText(x, y)
+    text_object.setFont("Helvetica", 12)
+    text_object.setTextOrigin(x, y)
+    
+    nova_string = text
+    if len(text) >= max_width:
+        nova_string = text[:max_width] + "\n" + text[max_width:]
+
+    lines = nova_string.split("\n")  # Dividir o texto em linhas
+    for line in lines:
+        text_object.textLine(line)  # Adicionar cada linha ao objeto de texto
+
+    c.drawText(text_object)
+
+
+if 'model_name' not in st.session_state:
+    st.session_state['model_name'] = []
+if 'cost' not in st.session_state:
+    st.session_state['cost'] = []
+if 'total_tokens' not in st.session_state:
+    st.session_state['total_tokens'] = []
+if 'total_cost' not in st.session_state:
+    st.session_state['total_cost'] = 0.0
+if 'data_hora_inicio_conversa' not in st.session_state:
+    st.session_state['data_hora_inicio_conversa'] = ''
+
+if 'mensagens' not in st.session_state:
+    st.session_state['mensagens'] = []
+    
+    
+    
+    
+# Sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
+st.sidebar.title("Sidebar")
+model_name = st.sidebar.radio("Escolha o modelo:", ("GPT-3.5", "GPT-4"))
+counter_placeholder = st.sidebar.empty()
+counter_placeholder.write(f"Custo Total: ${st.session_state['total_cost']:.5f}")
+    
+    
+# Map model names to OpenAI model IDs
+if model_name == "GPT-3.5":
+    model = "gpt-3.5-turbo"
+else:
+    model = "gpt-4"
+
+
+if "desabilita_widget" not in st.session_state:
+    st.session_state["desabilita_widget"] = False
+
+# Adicione um botão de encerramento
+if st.sidebar.button("Encerrar Conversa", key="clear", type="primary"):
+    st.session_state['desabilita_widget'] = True
 
 #Cabeçalho
 st.header('💜 Conteúdo da Página A')
@@ -14,31 +71,37 @@ st.title('Chat de acesso do  sistema SGS  💙')
 st.header('Configuração do Chat')
 st.divider()
 
+
+
+
 #Formulário
 st.subheader('1. Defina a criatividade da resposta')
 
-temperature  = st.slider(label = 'Slider',
-    min_value=0.,
-    max_value=2.,
-    value= [0.,1.], # é possivel colocar horários e datas (biblioteca datetime)
-    step=0.1,
-    format= '%.1f', # '%d' para inteiros, '%e' para notacao cientifica, '%f' para numeros reais
-    key=None,
-    help='Input numérico',
-    on_change=None,
-    args=None,
-    kwargs=None,
-    disabled=False,
-    label_visibility="visible")
-st.write(temperature[1] )
 
-st.divider()
+
+temperature  = st.slider(label = 'Slider',
+            min_value=0.,
+            max_value=2.,
+            value= [0.,1.], # é possivel colocar horários e datas (biblioteca datetime)
+            step=0.1,
+            format= '%.1f', # '%d' para inteiros, '%e' para notacao cientifica, '%f' para numeros reais
+            key=None,
+            help='Input numérico',
+            on_change=None,
+            args=None,
+            kwargs=None,
+            label_visibility="visible",
+            disabled=st.session_state['desabilita_widget']
+)
+          
 st.subheader('2. Configure o tamanho da resposta')
 max_tokens_resposta = 200
 genre = st.radio(
      "Tamanho da Resposta",
      ('Curta', 'Média', 'Extensa'),
-     horizontal=True)
+     horizontal=True,
+     disabled=st.session_state['desabilita_widget']
+     )
 
 if genre == 'Curta':
      max_tokens_resposta = 100
@@ -46,15 +109,16 @@ elif genre == 'Média':
      max_tokens_resposta = 250
 else:
     max_tokens_resposta = 400
-
-st.divider()
+    
 st.subheader('3. Estilo de Escrita')
 
 estilo_escrita = ""
 estilo = st.radio(
      "Estilos",
      ('Cordial', 'Objetivo','Simples'),
-     horizontal=True)
+     horizontal=True,
+     disabled=st.session_state['desabilita_widget']
+     )
 
 
 if estilo == 'Cordial':
@@ -76,41 +140,6 @@ if 'messages' not in st.session_state:
         {"role": "system", "content": "Você será um assistente" + estilo_escrita + " virtual para um usuário do sistema SGS. Sua função será tentar resolver os problemas de acesso do usuário ao SGS. Pedido para ele verificar se o usuário dele está ativo. Se ele tem permissão de acesso ao sistema e caso as verificações não sejam suficientes solicitar que o usuário entre em contato com o setor AB responsável."}
     ]
 
-if 'model_name' not in st.session_state:
-    st.session_state['model_name'] = []
-if 'cost' not in st.session_state:
-    st.session_state['cost'] = []
-if 'total_tokens' not in st.session_state:
-    st.session_state['total_tokens'] = []
-if 'total_cost' not in st.session_state:
-    st.session_state['total_cost'] = 0.0
-if 'data_hora_inicio_conversa' not in st.session_state:
-    st.session_state['data_hora_inicio_conversa'] = ''
-
-
-# Sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
-st.sidebar.title("Sidebar")
-model_name = st.sidebar.radio("Escolha o modelo:", ("GPT-3.5", "GPT-4"))
-counter_placeholder = st.sidebar.empty()
-counter_placeholder.write(f"Custo Total: ${st.session_state['total_cost']:.5f}")
-
-
-# Adicione um botão de encerramento
-if st.sidebar.button("Encerrar Conversa", key="clear", type="primary"):
-    st.stop()
-
-# Map model names to OpenAI model IDs
-if model_name == "GPT-3.5":
-    model = "gpt-3.5-turbo"
-else:
-    model = "gpt-4"
-      
-# Iniciar Historico Chat
-if "mensagens" not in st.session_state:
-    {"role": "system", "content": "Você será um assistente virtual para um usuário do sistema SGS. Sua função será tentar resolver os problemas de acesso do usuário ao SGS. Pedido para ele verificar se o usuário dele está ativo. Se ele tem permissão de acesso ao sistema e caso as verificações não sejam suficientes solicitar que o usuário entre em contato com o setor AB responsável."}
-
-
-
 
 
 # Aparecer o Historico do Chat na tela
@@ -120,7 +149,9 @@ for mensagens in st.session_state.mensagens[1:]:
 
 
 # React to user input
-prompt = st.chat_input("Está tendo algum problema com o SGS?")
+prompt = st.chat_input("Está tendo algum problema com o SGS?", disabled=st.session_state['desabilita_widget'])
+
+
 
 if prompt:
 
@@ -189,4 +220,42 @@ if prompt:
             st.markdown(resposta)
         # Add assistant response to chat history
         st.session_state.mensagens.append({"role": "system", "content": resposta})
+        
+        
 
+    
+    
+    #st.stop()
+    
+
+if st.session_state["desabilita_widget"]:
+    if st.sidebar.button("Exportar Diálogo"):
+        pdf_filename = "historico/historico_conversa.pdf"
+        c = canvas.Canvas(pdf_filename, pagesize=A4)
+        c.setFont("Helvetica", 12)
+       
+        
+        if len(st.session_state.mensagens) == 0:
+            c.drawString(50, 700, f"1: Não existiu diálogo neste chat")
+            c.showPage()
+         
+            
+
+        # Write chat messages to the PDF
+        index = 1
+        x = 50
+        y = A4[1] - 50  # Margem superior
+        # Largura máxima para o texto (ajuste conforme necessário)
+        largura_maxima = A4[0] - 2 * x  # Use a largura da página com margens
+
+        for msg in st.session_state.mensagens:
+            linha = f"{index}: {msg['content']}"
+            draw_text_with_line_breaks(c, x, y, linha, largura_maxima)
+
+            #c.drawString(x, y, linha)
+            y -= 20  # Mude a posição y para a próxima linha
+            index=index+1
+            
+        c.save()
+
+        st.success(f"PDF generated successfully: [Download PDF]({pdf_filename})")
