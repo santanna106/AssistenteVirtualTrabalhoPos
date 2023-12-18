@@ -27,6 +27,8 @@ def ajusta_linhas(linha:str,tam:int) -> str:
         
     return linha_tratada
 
+
+
 # Função para desenhar texto com quebra de linha
 def draw_text_with_line_breaks(c, x, y, text, max_width):
     text_object = c.beginText(x, y)
@@ -39,6 +41,16 @@ def draw_text_with_line_breaks(c, x, y, text, max_width):
         text_object.textLine(line)  # Adicionar cada linha ao objeto de texto
 
     c.drawText(text_object)
+    
+def converte_historico_em_string()->str:
+    historico_dialogo = []
+    index = 1
+    for msg in st.session_state.mensagens:
+        linha = f"{index}. {msg['role']}: {msg['content']}"
+        historico_dialogo.append(linha)
+        index = index + 1
+        
+    return historico_dialogo
 
 
 if 'model_name' not in st.session_state:
@@ -63,6 +75,11 @@ st.sidebar.title("Sidebar")
 model_name = st.sidebar.radio("Escolha o modelo:", ("GPT-3.5", "GPT-4"))
 counter_placeholder = st.sidebar.empty()
 counter_placeholder.write(f"Custo Total: ${st.session_state['total_cost']:.5f}")
+token_placeholder = st.sidebar.empty()
+token_placeholder.write(f"Total de Tokens: {sum(st.session_state['total_tokens'])}")
+data_placeholder = st.sidebar.empty()
+data_placeholder.write(f"Data e Hora: { st.session_state['data_hora_inicio_conversa']}")
+data_frame = st.sidebar.empty()
     
     
 # Map model names to OpenAI model IDs
@@ -78,6 +95,21 @@ if "desabilita_widget" not in st.session_state:
 # Adicione um botão de encerramento
 if st.sidebar.button("Encerrar Conversa", key="clear", type="primary"):
     st.session_state['desabilita_widget'] = True
+    counter_placeholder.write(f"Custo Total: ${st.session_state['total_cost']:.5f}")
+    token_placeholder.write(f"Total de Tokens: {sum(st.session_state['total_tokens'])}")
+    data_placeholder.write(f"Data e Hora: { st.session_state['data_hora_inicio_conversa']}")
+    historico_da_conversa = '\n'.join(converte_historico_em_string())
+    data_info_chat = {'TotalCusto': [f"${st.session_state['total_cost']:.5f}"],
+                      'TotalTokens': [sum(st.session_state['total_tokens'])],
+                      'DataHora':[st.session_state['data_hora_inicio_conversa']],
+                      'Historico':historico_da_conversa
+                      }  
+    
+    df = pd.DataFrame(data_info_chat) 
+    data_frame.write(df)
+    st.divider()
+    
+   
 
 #Cabeçalho
 st.header('💜 Conteúdo da Página A')
@@ -273,3 +305,6 @@ if st.session_state["desabilita_widget"]:
         c.save()
 
         st.success(f"PDF generated successfully: [Download PDF]({pdf_filename})")
+        
+
+
