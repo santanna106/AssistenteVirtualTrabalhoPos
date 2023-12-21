@@ -9,7 +9,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
-
 API_KEY = st.sidebar.text_input('Chave da API OpenAI', type = 'password')
 model_name = st.sidebar.radio("Escolha o modelo:", ("GPT-3.5", "GPT-4"))
 
@@ -30,8 +29,6 @@ def ajusta_linhas(linha:str,tam:int) -> str:
         posicao_ant = posicao_quebra
         
     return linha_tratada
-
-
 
 # Função para desenhar texto com quebra de linha
 def draw_text_with_line_breaks(c, x, y, text, max_width):
@@ -56,7 +53,6 @@ def converte_historico_em_string()->str:
         
     return historico_dialogo
 
-
 if 'model_name' not in st.session_state:
     st.session_state['model_name'] = []
 if 'cost' not in st.session_state:
@@ -72,9 +68,6 @@ if 'mensagens' not in st.session_state:
 if 'contexto_assistente' not in st.session_state:
     st.session_state['contexto_assistente'] = ''
     
-
-
-   
 # Sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
 st.sidebar.title("Cálculo das Interações")
 
@@ -92,7 +85,6 @@ if model_name == "GPT-3.5":
     model = "gpt-3.5-turbo"
 else:
     model = "gpt-4"
-
 
 if "desabilita_widget" not in st.session_state:
     st.session_state["desabilita_widget"] = False
@@ -114,20 +106,13 @@ if st.sidebar.button("Encerrar Conversa", key="clear", type="primary"):
     data_frame.write(df)
     st.divider()
     
-   
-
 #Cabeçalho
 st.title('Chat de acesso do  sistema SGS  💙')
 st.header('Configuração do Chat')
 st.divider()
 
-
-
-
 #Formulário
 st.subheader('1. Defina a criatividade da resposta')
-
-
 
 temperature  = st.slider(label = 'Slider',
             min_value=0.,
@@ -187,7 +172,6 @@ for uploaded_file in uploaded_files:
     # To read file as string:
     st.session_state['contexto_assistente'] = stringio.read()
 
-
 # Fim Formulário
 
 # Variaveis de Sessão
@@ -200,10 +184,6 @@ if 'messages' not in st.session_state:
         {"role": "system", "content": "Você será um assistente" + estilo_escrita + " virtual para um usuário do sistema SGS. Sua função será tentar resolver os problemas de acesso do usuário ao SGS. Pedido para ele verificar se o usuário dele está ativo. Se ele tem permissão de acesso ao sistema e caso as verificações não sejam suficientes solicitar que o usuário entre em contato com o setor AB responsável. Você também está hablitado a responder questões de natureza geral que esteja dentro do contexto descrito a seguir: " +st.session_state['contexto_assistente']+" "}
     ]
     
-    
-
-
-
 # Aparecer o Historico do Chat na tela
 for mensagens in st.session_state.mensagens[1:]:
     with st.chat_message(mensagens["role"]):
@@ -212,8 +192,6 @@ for mensagens in st.session_state.mensagens[1:]:
 
 # React to user input
 prompt = st.chat_input("Está tendo algum problema com o SGS?", disabled=st.session_state['desabilita_widget'])
-
-
 
 if prompt:
 
@@ -275,34 +253,23 @@ if prompt:
         st.session_state['total_cost'] += cost
 
         st.write(st.session_state['total_cost'])
-
-
         # Display assistant response in chat message container
         with st.chat_message("system"):
             st.markdown(resposta)
         # Add assistant response to chat history
-        st.session_state.mensagens.append({"role": "system", "content": resposta})
-        
-        
-
-    
-    
+        st.session_state.mensagens.append({"role": "system", "content": resposta})    
     #st.stop()
     
-
 if st.session_state["desabilita_widget"]:
     if st.sidebar.button("Exportar Diálogo"):
         pdf_filename = "historico/historico_conversa.pdf"
         c = canvas.Canvas(pdf_filename, pagesize=A4)
         c.setFont("Helvetica", 12)
        
-        
         if len(st.session_state.mensagens) == 0:
             c.drawString(50, 700, f"1: Não existiu diálogo neste chat")
             c.showPage()
          
-            
-
         # Write chat messages to the PDF
         index = 1
         x = 50
