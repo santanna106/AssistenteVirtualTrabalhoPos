@@ -163,27 +163,41 @@ elif estilo == 'Objetivo':
 else:
     estilo_escrita = "de linguagem simples e bem articulada"
     
-    
-uploaded_files = st.file_uploader("Escolha um arquivo .txt", accept_multiple_files=True)
-for uploaded_file in uploaded_files:
-    bytes_data = uploaded_file.read()
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    st.write(stringio)
-    # To read file as string:
-    st.session_state['contexto_assistente'] = stringio.read()
-
-# Fim Formulário
-
-# Variaveis de Sessão
+    # Variaveis de Sessão
 if 'generated' not in st.session_state:
     st.session_state['generated'] = []
 if 'past' not in st.session_state:
     st.session_state['past'] = []
 if 'messages' not in st.session_state:
     st.session_state['messages'] = [
-        {"role": "system", "content": "Você será um assistente" + estilo_escrita + " virtual para um usuário do sistema SGS. Sua função será tentar resolver os problemas de acesso do usuário ao SGS. Pedido para ele verificar se o usuário dele está ativo. Se ele tem permissão de acesso ao sistema e caso as verificações não sejam suficientes solicitar que o usuário entre em contato com o setor AB responsável. Você também está hablitado a responder questões de natureza geral que esteja dentro do contexto descrito a seguir: " +st.session_state['contexto_assistente']+" "}
+        {"role": "system", "content": "Você será um assistente" + estilo_escrita + """
+         virtual para um usuário do sistema SGS.
+         Sua função será tentar resolver os problemas de acesso do usuário ao SGS.
+         Pedindo para ele verificar se o usuário dele está ativo.
+         Se ele tem permissão de acesso ao sistema e caso as verificações 
+         não sejam suficientes solicitar que o usuário entre em contato com o setor 
+         AB responsável. Você também estará habilitado a responder questões de natureza geral
+         Dentro de um contexto fornecido através de um arquivo fornecido pelo usuário
+          """
+        }
     ]
     
+    
+uploaded_files = st.file_uploader("Escolha um arquivo .txt", accept_multiple_files=True)
+for uploaded_file in uploaded_files:
+    bytes_data = uploaded_file.read()
+    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    # To read file as string:
+    st.session_state['contexto_assistente'] = stringio.read()
+    introducao_contexto = """ 
+    Contexto fornecido pelo usuário: 
+    """
+    st.session_state['contexto_assistente'] = introducao_contexto + st.session_state['contexto_assistente']
+    st.session_state['messages'][0]['content'] =  st.session_state['messages'][0]['content']  + st.session_state['contexto_assistente']
+    
+
+# Fim Formulário
+
 # Aparecer o Historico do Chat na tela
 for mensagens in st.session_state.mensagens[1:]:
     with st.chat_message(mensagens["role"]):
@@ -194,7 +208,6 @@ for mensagens in st.session_state.mensagens[1:]:
 prompt = st.chat_input("Está tendo algum problema com o SGS?", disabled=st.session_state['desabilita_widget'])
 
 if prompt:
-
     if len(st.session_state.mensagens) == 0:
         data_hora_inicio_conversa = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
         st.session_state['data_hora_inicio_conversa'] = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
@@ -205,8 +218,8 @@ if prompt:
     with st.chat_message("user"):
         st.markdown(prompt)
     # Add user message to chat history
-    st.session_state.mensagens.append({"role": "user", "content": prompt})
-
+    st.session_state['messages'].append({"role": "user", "content": prompt})
+    flag_continua_dialogo  = True
     for msg in st.session_state.mensagens:
         if msg['role'] == 'user':
         #print('Mensagem Do Menino> ',msg)
@@ -252,12 +265,12 @@ if prompt:
         st.session_state['cost'].append(cost)
         st.session_state['total_cost'] += cost
 
-        st.write(st.session_state['total_cost'])
+        #st.write(st.session_state['total_cost'])
         # Display assistant response in chat message container
         with st.chat_message("system"):
             st.markdown(resposta)
         # Add assistant response to chat history
-        st.session_state.mensagens.append({"role": "system", "content": resposta})    
+        st.session_state['messages'].append({"role": "system", "content": resposta})    
     #st.stop()
     
 if st.session_state["desabilita_widget"]:
