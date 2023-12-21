@@ -13,7 +13,7 @@ with open (path_model,"rb") as arquivo:
       
 idade = math.ceil(st.number_input('Qual a sua Idade? ',format="%d"))
 renda = st.number_input('Qual a sua Renda? ')
-emprestimo = st.number_input('Possui algum empréstimo? Qual o valor ')
+emprestimo = st.number_input('Qual o valor de empréstimo que deseja contratar? ')
 
 data = {
     'person_age': [idade],

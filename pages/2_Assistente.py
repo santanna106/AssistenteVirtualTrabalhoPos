@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import math
+import io
 from io import StringIO
 from time import gmtime, strftime
 from reportlab.lib.pagesizes import letter
@@ -46,7 +47,7 @@ def draw_text_with_line_breaks(c, x, y, text, max_width):
 def converte_historico_em_string()->str:
     historico_dialogo = []
     index = 1
-    for msg in st.session_state.mensagens:
+    for msg in st.session_state.messages:
         linha = f"{index}. {msg['role']}: {msg['content']}"
         historico_dialogo.append(linha)
         index = index + 1
@@ -63,10 +64,15 @@ if 'total_cost' not in st.session_state:
     st.session_state['total_cost'] = 0.0
 if 'data_hora_inicio_conversa' not in st.session_state:
     st.session_state['data_hora_inicio_conversa'] = ''
-if 'mensagens' not in st.session_state:
-    st.session_state['mensagens'] = []
 if 'contexto_assistente' not in st.session_state:
     st.session_state['contexto_assistente'] = ''
+        # Variaveis de Sessão
+if 'generated' not in st.session_state:
+    st.session_state['generated'] = []
+if 'past' not in st.session_state:
+    st.session_state['past'] = []
+
+    
     
 # Sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
 st.sidebar.title("Cálculo das Interações")
@@ -163,25 +169,7 @@ elif estilo == 'Objetivo':
 else:
     estilo_escrita = "de linguagem simples e bem articulada"
     
-    # Variaveis de Sessão
-if 'generated' not in st.session_state:
-    st.session_state['generated'] = []
-if 'past' not in st.session_state:
-    st.session_state['past'] = []
-if 'messages' not in st.session_state:
-    st.session_state['messages'] = [
-        {"role": "system", "content": "Você será um assistente" + estilo_escrita + """
-         virtual para um usuário do sistema SGS.
-         Sua função será tentar resolver os problemas de acesso do usuário ao SGS.
-         Pedindo para ele verificar se o usuário dele está ativo.
-         Se ele tem permissão de acesso ao sistema e caso as verificações 
-         não sejam suficientes solicitar que o usuário entre em contato com o setor 
-         AB responsável. Você também estará habilitado a responder questões de natureza geral
-         Dentro de um contexto fornecido através de um arquivo fornecido pelo usuário
-          """
-        }
-    ]
-    
+
     
 uploaded_files = st.file_uploader("Escolha um arquivo .txt", accept_multiple_files=True)
 for uploaded_file in uploaded_files:
@@ -198,8 +186,22 @@ for uploaded_file in uploaded_files:
 
 # Fim Formulário
 
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = [
+        {"role": "system", "content": "Você será um assistente" + estilo_escrita + """
+         virtual para um usuário do sistema SGS.
+         Sua função será tentar resolver os problemas de acesso do usuário ao SGS.
+         Pedindo para ele verificar se o usuário dele está ativo.
+         Se ele tem permissão de acesso ao sistema e caso as verificações 
+         não sejam suficientes solicitar que o usuário entre em contato com o setor 
+         AB responsável. Você também estará habilitado a responder questões de natureza geral
+         Dentro de um contexto fornecido através de um arquivo fornecido pelo usuário
+          """
+        }
+    ]
+
 # Aparecer o Historico do Chat na tela
-for mensagens in st.session_state.mensagens[1:]:
+for mensagens in st.session_state.messages[1:]:
     with st.chat_message(mensagens["role"]):
         st.markdown(mensagens["content"])
 
@@ -208,7 +210,7 @@ for mensagens in st.session_state.mensagens[1:]:
 prompt = st.chat_input("Está tendo algum problema com o SGS?", disabled=st.session_state['desabilita_widget'])
 
 if prompt:
-    if len(st.session_state.mensagens) == 0:
+    if len(st.session_state.messages) == 0:
         data_hora_inicio_conversa = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
         st.session_state['data_hora_inicio_conversa'] = strftime("%a, %d/%m/%Y %H:%M ", gmtime())
 
@@ -220,7 +222,7 @@ if prompt:
     # Add user message to chat history
     st.session_state['messages'].append({"role": "user", "content": prompt})
     flag_continua_dialogo  = True
-    for msg in st.session_state.mensagens:
+    for msg in st.session_state.messages:
         if msg['role'] == 'user':
         #print('Mensagem Do Menino> ',msg)
             moderation = client.moderations.create(input=msg['content'])
@@ -272,35 +274,39 @@ if prompt:
         # Add assistant response to chat history
         st.session_state['messages'].append({"role": "system", "content": resposta})    
     #st.stop()
-    
-if st.session_state["desabilita_widget"]:
-    if st.sidebar.button("Exportar Diálogo"):
-        pdf_filename = "historico/historico_conversa.pdf"
-        c = canvas.Canvas(pdf_filename, pagesize=A4)
-        c.setFont("Helvetica", 12)
-       
-        if len(st.session_state.mensagens) == 0:
-            c.drawString(50, 700, f"1: Não existiu diálogo neste chat")
-            c.showPage()
-         
-        # Write chat messages to the PDF
-        index = 1
-        x = 50
-        y = A4[1] - 50  # Margem superior
+buffer = io.BytesIO()    
+
+def generate_pdf():
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer)
+    index = 1
+    x = 50
+    y = A4[1] - 50  # Margem superior
         # Largura máxima para o texto (ajuste conforme necessário)
-        largura_maxima = A4[0] - 2 * x  # Use a largura da página com margens
-
-        for msg in st.session_state.mensagens:
-            linha = f"{index}. {msg['role']}: {msg['content']}"
-            draw_text_with_line_breaks(c, x, y, linha, largura_maxima)
-
-            #c.drawString(x, y, linha)
-            y -= 20  # Mude a posição y para a próxima linha
-            index=index+1
-            
-        c.save()
-
-        st.success(f"PDF generated successfully: [Download PDF]({pdf_filename})")
+    largura_maxima = A4[0] - 2 * x  
+    for msg in st.session_state['messages'][1:]:
+        linha =  f"{index}. {msg['role']}: {msg['content']} \n"
         
+        #linhas = linhas + linha
+        draw_text_with_line_breaks(c, x, y, linha, largura_maxima)
+        
+        #c.drawString(x, y, linha)
+        y -= 20  # Mude a posição y para a próxima linha
+        index=index+1
+    c.save()
+    buffer.seek(0)
+    return buffer        
+
+
+if st.button("Baixar PDF"):
+    pdf_buffer = generate_pdf()
+    st.download_button(
+        label="Clique aqui para baixar o PDF do diálogo",
+        data=pdf_buffer,
+        file_name="exemplo.pdf",
+        mime="application/pdf",
+    )
+
+
 
 

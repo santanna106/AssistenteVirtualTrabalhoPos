@@ -28,6 +28,18 @@ st.write(
 
 st.subheader('Modelo de Análise de Crédito')
 
+st.write(
+    """
+    Os dados utilizados para a criação do modelo foi adaptado do desafio kaggle
+    https://www.kaggle.com/code/anshtanwar/credit-risk-prediction-training-and-eda .
+    As features utilizadas para o desenvolvimento do mesmo foram idade (person_age), renda(person_income) e valor solicitado para o empréstimo (loan_amnt).
+    
+    Na análise do problema foi levantado 
+    
+     
+    """) 
+
+
 
 st.subheader('Assistente')
 
