@@ -28,7 +28,9 @@ if st.button("Avaliar Aprovação de Crédito", key="clear", type="primary"):
     df.reset_index(inplace = True)
     predictions = modelo.predict(X=df)
     if predictions[0] == 0:
-        st.write(':green[Parabéns, crédito aprovado!]')
+        st.success('Parabéns, crédito aprovado!', icon="✅")
+        st.balloons()
     else:
-        st.write(':red[Seu crédito não foi aprovado!]')
+        st.error('Seu crédito não foi aprovado!', icon="🚨")
+      
 
